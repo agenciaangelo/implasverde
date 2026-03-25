@@ -41,7 +41,7 @@ async function fetchMercado() {
   try {
     const d = await callBackend("mercado");
     document.getElementById("dolarValor").textContent = "R$ " + (d.dolar?.valor || "—");
-    document.getElementById("dolarVar").textContent = d.dolar?.variacao || "";
+    document.getElementById("dolarVar").textContent = (d.dolar?.variacao || "") + tendIcon(d.dolar?.tendencia);
     document.getElementById("dolarVar").style.color = tendColor(d.dolar?.tendencia);
     document.getElementById("brentValor").textContent = "US$ " + (d.brent?.valor || "—");
     document.getElementById("brentVar").textContent = (d.brent?.variacao || "") + tendIcon(d.brent?.tendencia);
@@ -59,21 +59,24 @@ async function fetchMercado() {
 async function fetchNoticias() {
   document.getElementById("noticias-content").innerHTML = spinner();
   try {
-    const data = await callBackend("noticias");
-    const noticias = data.noticias || [];
-    if (!noticias.length) throw new Error("Sem notícias");
-
+    const data = await callBackend("gemini", {
+      prompt: `Você é um jornalista brasileiro especializado em geopolítica. Liste 6 notícias recentes e relevantes em PORTUGUÊS BRASILEIRO sobre o conflito entre EUA e Israel contra o Irã e seus aliados (Hezbollah, Houthis, milícias iranianas) no Oriente Médio. Foque nos impactos geopolíticos, econômicos e energéticos. Simule o estilo dos principais veículos brasileiros (Folha, Globo, Valor Econômico). Retorne APENAS um JSON array sem markdown:
+[{"titulo":"string","resumo":"string com 2 frases sobre o fato e impacto","fonte":"nome do veículo brasileiro simulado","data":"data aproximada","impacto_nivel":"Alto","categoria":"Militar"}]
+impacto_nivel: Alto/Médio/Baixo. categoria: Militar/Diplomacia/Economia/Energia.`
+    });
+    const noticias = parseJSON(data.text);
+    const impactColor = { Alto: "#ef4444", Médio: "#f97316", Baixo: "#22c55e" };
+    const catColor = { Militar: "#ef4444", Diplomacia: "#60a5fa", Economia: "#22c55e", Energia: "#f97316" };
     document.getElementById("noticias-content").innerHTML = noticias.map(n => `
       <div class="news-card">
-        <div class="news-bar" style="background:#f97316"></div>
+        <div class="news-bar" style="background:${impactColor[n.impacto_nivel] || '#f97316'}"></div>
         <div>
           <div class="news-tags">
-            <span style="font-size:10px;color:#f97316;letter-spacing:1px;font-weight:700">${n.fonte}</span>
-            <span style="font-size:10px;color:#333;letter-spacing:1px">${n.data}</span>
+            <span class="tag" style="color:${impactColor[n.impacto_nivel] || '#f97316'};border-bottom:1px solid ${impactColor[n.impacto_nivel] || '#f97316'}">${n.impacto_nivel}</span>
+            <span class="tag" style="color:${catColor[n.categoria] || '#888'};border-bottom:1px solid ${catColor[n.categoria] || '#888'}">${n.categoria}</span>
+            <span style="font-size:10px;color:#333;letter-spacing:1px">${n.fonte} · ${n.data}</span>
           </div>
-          <p class="news-title">
-            <a href="${n.url}" target="_blank" style="color:#e5e5e5;text-decoration:none">${n.titulo}</a>
-          </p>
+          <p class="news-title">${n.titulo}</p>
           <p class="news-resumo">${n.resumo}</p>
         </div>
       </div>`).join("");
@@ -108,10 +111,13 @@ async function fetchAnalise() {
 async function fetchInsights() {
   document.getElementById("insights-content").innerHTML = spinner();
   try {
-    const [feedData, storyData] = await Promise.all([
-      callBackend("gemini", { prompt: `Crie um briefing de vídeo para FEED do Instagram do Márcio Souza. Audiência: empresários e empreendedores de diversas áreas (varejo supermercadista nordestino, indústria, serviços). Tema: conflito EUA-Israel contra o Irã e impactos econômicos globais. Objetivo: marketing INDIRETO — posicionar Márcio como autoridade em geopolítica e negócios. CTA deve convidar o empresário a comentar sua opinião no post, nunca direcionar para compra ou contato. NÃO mencionar Implasverde. Responda em português brasileiro. Retorne APENAS JSON sem markdown: {"titulo":"string","duracao":"string","gancho":"string","roteiro":["string","string","string","string"],"tom":"string","trilha":"string","legenda":"string","hashtags":["string","string","string","string","string"],"melhor_horario":"string"}` }),
-      callBackend("gemini", { prompt: `Crie um briefing de vídeo para STORIES do Instagram do Márcio Souza. Audiência: empresários e empreendedores de diversas áreas. Tema: conflito EUA-Israel contra o Irã e impactos econômicos globais. Objetivo: marketing INDIRETO — gerar engajamento nos comentários com perguntas que estimulem empresários a debater impactos no seu setor. Elementos interativos devem provocar reflexão empresarial. CTA final deve convidar ao debate nos comentários. NÃO mencionar Implasverde. Responda em português brasileiro. Retorne APENAS JSON sem markdown: {"titulo":"string","telas":[{"numero":1,"texto_principal":"string","texto_apoio":"string","elemento_interativo":"enquete Sim Nao"},{"numero":2,"texto_principal":"string","texto_apoio":"string","elemento_interativo":"none"},{"numero":3,"texto_principal":"string","texto_apoio":"string","elemento_interativo":"none"},{"numero":4,"texto_principal":"string","texto_apoio":"string","elemento_interativo":"caixa de perguntas"},{"numero":5,"texto_principal":"string","texto_apoio":"string","elemento_interativo":"link para perfil"}],"cta_final":"string","melhor_horario":"string"}` })
-    ]);
+    const feedData = await callBackend("gemini", {
+      prompt: `Crie um briefing de vídeo para FEED do Instagram do Márcio Souza. Audiência: empresários e empreendedores de diversas áreas (varejo supermercadista nordestino, indústria, serviços). Tema: conflito EUA-Israel contra o Irã e impactos econômicos globais. Objetivo: marketing INDIRETO — posicionar Márcio como autoridade em geopolítica e negócios. CTA deve convidar o empresário a comentar sua opinião no post, nunca direcionar para compra ou contato. NÃO mencionar Implasverde. Responda em português brasileiro. Retorne APENAS JSON sem markdown: {"titulo":"string","duracao":"string","gancho":"string","roteiro":["string","string","string","string"],"tom":"string","trilha":"string","legenda":"string","hashtags":["string","string","string","string","string"],"melhor_horario":"string"}`
+    });
+
+    const storyData = await callBackend("gemini", {
+      prompt: `Crie um briefing de vídeo para STORIES do Instagram do Márcio Souza. Audiência: empresários e empreendedores de diversas áreas. Tema: conflito EUA-Israel contra o Irã e impactos econômicos globais. Objetivo: marketing INDIRETO — gerar engajamento nos comentários com perguntas que estimulem empresários a debater impactos no seu setor. CTA final deve convidar ao debate nos comentários. NÃO mencionar Implasverde. Responda em português brasileiro. Retorne APENAS JSON sem markdown: {"titulo":"string","telas":[{"numero":1,"texto_principal":"string","texto_apoio":"string","elemento_interativo":"enquete Sim Nao"},{"numero":2,"texto_principal":"string","texto_apoio":"string","elemento_interativo":"none"},{"numero":3,"texto_principal":"string","texto_apoio":"string","elemento_interativo":"none"},{"numero":4,"texto_principal":"string","texto_apoio":"string","elemento_interativo":"caixa de perguntas"},{"numero":5,"texto_principal":"string","texto_apoio":"string","elemento_interativo":"link para perfil"}],"cta_final":"string","melhor_horario":"string"}`
+    });
 
     const feed = parseJSON(feedData.text);
     const story = parseJSON(storyData.text);
