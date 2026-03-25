@@ -1,4 +1,4 @@
-const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxBUDr4Etw8k8_Uq1h4vUyrcLW9diot5_qe1szG1CM49VpwAQxSVauAfK_YpG3_gegA/exec";
+const BACKEND_URL = "https://script.google.com/macros/s/AKfycbwzC7OxMA3ZNqMJ-QW-E4TpQRpg-YRYVx5QTrBEaHsY6GeJNWNHq1w9rpfo3Z-DnhgW/exec";
 
 async function callBackend(action, extra = {}) {
   const res = await fetch(BACKEND_URL, {
