@@ -1,18 +1,14 @@
-// ⚠️ COLE SUA CHAVE DO GOOGLE GEMINI AQUI
-const GEMINI_KEY = "AIzaSyB03KAcF9C2S52DMso047Cso-lmn3n__ac";
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
+const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxBUDr4Etw8k8_Uq1h4vUyrcLW9diot5_qe1szG1CM49VpwAQxSVauAfK_YpG3_gegA/exec";
 
 async function callGemini(prompt) {
-  const res = await fetch(GEMINI_URL, {
+  const res = await fetch(BACKEND_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 1500 }
-    })
+    headers: { "Content-Type": "text/plain" },
+    body: JSON.stringify({ prompt })
   });
   const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  if (data.error) throw new Error(data.error);
+  return data.text || "";
 }
 
 function parseJSON(text) {
@@ -42,7 +38,6 @@ function switchTab(tab) {
 
 let analiseLoaded = false;
 
-// ── MERCADO ──────────────────────────────────────────
 async function fetchMercado() {
   try {
     const text = await callGemini(`Informe cotações aproximadas atuais de hoje: Dólar (USD/BRL), Petróleo Brent (USD/barril) e WTI. Retorne APENAS JSON sem markdown: {"dolar":{"valor":"5.75","variacao":"+0.3%","tendencia":"alta"},"brent":{"valor":"82.50","variacao":"-0.5%","tendencia":"baixa"},"wti":{"valor":"78.20","variacao":"-0.4%","tendencia":"baixa"}}`);
@@ -62,7 +57,6 @@ async function fetchMercado() {
   }
 }
 
-// ── NOTÍCIAS ──────────────────────────────────────────
 async function fetchNoticias() {
   document.getElementById("noticias-content").innerHTML = spinner();
   try {
@@ -85,10 +79,10 @@ async function fetchNoticias() {
       </div>`).join("");
   } catch (e) {
     document.getElementById("noticias-content").innerHTML = `<p class="error-text">Erro ao carregar notícias. Tente novamente.</p>`;
+    console.error(e);
   }
 }
 
-// ── ANÁLISE ──────────────────────────────────────────
 async function fetchAnalise() {
   analiseLoaded = true;
   document.getElementById("analise-content").innerHTML = spinner();
@@ -107,7 +101,6 @@ async function fetchAnalise() {
   }
 }
 
-// ── INSIGHTS ──────────────────────────────────────────
 async function fetchInsights() {
   document.getElementById("insights-content").innerHTML = spinner();
   try {
@@ -120,7 +113,6 @@ async function fetchInsights() {
     const story = parseJSON(storyText);
 
     document.getElementById("insights-content").innerHTML = `
-      <!-- FEED -->
       <div class="video-section">
         <div class="video-header">
           <span class="badge" style="color:#f97316;background:#f9731611;border:1px solid #f9731633">FEED</span>
@@ -143,7 +135,6 @@ async function fetchInsights() {
         <div class="hashtags">${feed.hashtags?.map(h => `<span class="hashtag">${h}</span>`).join("")}</div>
       </div>
 
-      <!-- STORY -->
       <div class="video-section">
         <div class="video-header">
           <span class="badge" style="color:#60a5fa;background:#60a5fa11;border:1px solid #60a5fa33">STORY</span>
@@ -175,6 +166,5 @@ function refreshAll() {
   if (document.getElementById("panel-analise").classList.contains("active")) fetchAnalise();
 }
 
-// Init
 fetchMercado();
 fetchNoticias();
