@@ -1,14 +1,12 @@
 const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxBUDr4Etw8k8_Uq1h4vUyrcLW9diot5_qe1szG1CM49VpwAQxSVauAfK_YpG3_gegA/exec";
 
-async function callGemini(prompt) {
+async function callBackend(action, extra = {}) {
   const res = await fetch(BACKEND_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain" },
-    body: JSON.stringify({ prompt })
+    body: JSON.stringify({ action, ...extra })
   });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
-  return data.text || "";
+  return await res.json();
 }
 
 function parseJSON(text) {
@@ -25,7 +23,7 @@ function spinner() {
 }
 
 function tendIcon(t) { return t === "alta" ? " ▲" : t === "baixa" ? " ▼" : ""; }
-function tendColor(t) { return t === "alta" ? "#ef4444" : t === "baixa" ? "#22c55e" : "#555"; }
+function tendColor(t) { return t === "alta" ? "#ef4444" : t === "baixa" ? "#22c55e" : "#888"; }
 
 function switchTab(tab) {
   document.querySelectorAll(".tab").forEach((t, i) => {
@@ -38,12 +36,12 @@ function switchTab(tab) {
 
 let analiseLoaded = false;
 
+// ── MERCADO ──────────────────────────────────────────
 async function fetchMercado() {
   try {
-    const text = await callGemini(`Informe cotações aproximadas atuais de hoje: Dólar (USD/BRL), Petróleo Brent (USD/barril) e WTI. Retorne APENAS JSON sem markdown: {"dolar":{"valor":"5.75","variacao":"+0.3%","tendencia":"alta"},"brent":{"valor":"82.50","variacao":"-0.5%","tendencia":"baixa"},"wti":{"valor":"78.20","variacao":"-0.4%","tendencia":"baixa"}}`);
-    const d = parseJSON(text);
+    const d = await callBackend("mercado");
     document.getElementById("dolarValor").textContent = "R$ " + (d.dolar?.valor || "—");
-    document.getElementById("dolarVar").textContent = (d.dolar?.variacao || "") + tendIcon(d.dolar?.tendencia);
+    document.getElementById("dolarVar").textContent = d.dolar?.variacao || "";
     document.getElementById("dolarVar").style.color = tendColor(d.dolar?.tendencia);
     document.getElementById("brentValor").textContent = "US$ " + (d.brent?.valor || "—");
     document.getElementById("brentVar").textContent = (d.brent?.variacao || "") + tendIcon(d.brent?.tendencia);
@@ -57,23 +55,25 @@ async function fetchMercado() {
   }
 }
 
+// ── NOTÍCIAS ──────────────────────────────────────────
 async function fetchNoticias() {
   document.getElementById("noticias-content").innerHTML = spinner();
   try {
-    const text = await callGemini(`Liste 6 notícias recentes sobre o conflito entre EUA e Israel contra o Irã e seus aliados (Hezbollah, Houthis, milícias iranianas) no Oriente Médio, com foco nos impactos geopolíticos, econômicos e energéticos. NÃO inclua conflitos não relacionados a esse eixo. Responda em português brasileiro. Retorne APENAS um JSON array sem markdown: [{"titulo":"...","resumo":"2 frases sobre o fato e seu impacto","fonte":"nome da fonte","impacto_nivel":"Alto","categoria":"Militar"}]. impacto_nivel: Alto/Médio/Baixo. categoria: Militar/Diplomacia/Economia/Energia.`);
-    const noticias = parseJSON(text);
-    const impactColor = { Alto: "#ef4444", Médio: "#f97316", Baixo: "#22c55e" };
-    const catColor = { Militar: "#ef4444", Diplomacia: "#60a5fa", Economia: "#22c55e", Energia: "#f97316" };
+    const data = await callBackend("noticias");
+    const noticias = data.noticias || [];
+    if (!noticias.length) throw new Error("Sem notícias");
+
     document.getElementById("noticias-content").innerHTML = noticias.map(n => `
       <div class="news-card">
-        <div class="news-bar" style="background:${impactColor[n.impacto_nivel] || '#f97316'}"></div>
+        <div class="news-bar" style="background:#f97316"></div>
         <div>
           <div class="news-tags">
-            <span class="tag" style="color:${impactColor[n.impacto_nivel] || '#f97316'};border-bottom:1px solid ${impactColor[n.impacto_nivel] || '#f97316'}">${n.impacto_nivel}</span>
-            <span class="tag" style="color:${catColor[n.categoria] || '#888'};border-bottom:1px solid ${catColor[n.categoria] || '#888'}">${n.categoria}</span>
-            ${n.fonte ? `<span style="font-size:10px;color:#333;letter-spacing:1px">${n.fonte}</span>` : ""}
+            <span style="font-size:10px;color:#f97316;letter-spacing:1px;font-weight:700">${n.fonte}</span>
+            <span style="font-size:10px;color:#333;letter-spacing:1px">${n.data}</span>
           </div>
-          <p class="news-title">${n.titulo}</p>
+          <p class="news-title">
+            <a href="${n.url}" target="_blank" style="color:#e5e5e5;text-decoration:none">${n.titulo}</a>
+          </p>
           <p class="news-resumo">${n.resumo}</p>
         </div>
       </div>`).join("");
@@ -83,13 +83,16 @@ async function fetchNoticias() {
   }
 }
 
+// ── ANÁLISE ──────────────────────────────────────────
 async function fetchAnalise() {
   analiseLoaded = true;
   document.getElementById("analise-content").innerHTML = spinner();
   try {
-    const text = await callGemini(`Analise o impacto do conflito EUA-Israel contra o Irã para: 1) mercado de plásticos no Brasil (petróleo, resinas, embalagens), 2) varejo supermercadista no Nordeste brasileiro, 3) câmbio dólar/real. Seja específico sobre riscos e oportunidades para a Implasverde (indústria de plásticos fornecedora de supermercados nordestinos). Responda em português brasileiro. Use **Subtítulo** para seções. Máximo 300 palavras.`);
-    const lines = text.split("\n");
-    const html = lines.map(line => {
+    const data = await callBackend("gemini", {
+      prompt: `Analise o impacto do conflito EUA-Israel contra o Irã para: 1) mercado de plásticos no Brasil (petróleo, resinas, embalagens), 2) varejo supermercadista no Nordeste brasileiro, 3) câmbio dólar/real. Seja específico sobre riscos e oportunidades para a Implasverde (indústria de plásticos fornecedora de supermercados nordestinos). Responda em português brasileiro. Use **Subtítulo** para seções. Máximo 300 palavras.`
+    });
+    const text = data.text || "";
+    const html = text.split("\n").map(line => {
       if (!line.trim()) return "<br>";
       if (/^\*\*.*\*\*$/.test(line.trim()))
         return `<p class="subtitulo">${line.replace(/\*\*/g, "")}</p>`;
@@ -101,16 +104,17 @@ async function fetchAnalise() {
   }
 }
 
+// ── INSIGHTS ──────────────────────────────────────────
 async function fetchInsights() {
   document.getElementById("insights-content").innerHTML = spinner();
   try {
-    const [feedText, storyText] = await Promise.all([
-      callGemini(`Crie um briefing de vídeo para FEED do Instagram do Márcio Souza. Audiência: empresários e empreendedores de diversas áreas (varejo supermercadista nordestino, indústria, serviços). Tema: conflito EUA-Israel contra o Irã e impactos econômicos globais. Objetivo: marketing INDIRETO — posicionar Márcio como autoridade em geopolítica e negócios. CTA deve convidar o empresário a comentar sua opinião no post, nunca direcionar para compra ou contato. NÃO mencionar Implasverde. Responda em português brasileiro. Retorne APENAS JSON sem markdown: {"titulo":"string","duracao":"string","gancho":"string","roteiro":["string","string","string","string"],"tom":"string","trilha":"string","legenda":"string","hashtags":["string","string","string","string","string"],"melhor_horario":"string"}`),
-      callGemini(`Crie um briefing de vídeo para STORIES do Instagram do Márcio Souza. Audiência: empresários e empreendedores de diversas áreas. Tema: conflito EUA-Israel contra o Irã e impactos econômicos globais. Objetivo: marketing INDIRETO — gerar engajamento nos comentários com perguntas que estimulem empresários a debater impactos no seu setor. Elementos interativos devem provocar reflexão empresarial. CTA final deve convidar ao debate nos comentários. NÃO mencionar Implasverde. Responda em português brasileiro. Retorne APENAS JSON sem markdown: {"titulo":"string","telas":[{"numero":1,"texto_principal":"string","texto_apoio":"string","elemento_interativo":"enquete Sim Nao"},{"numero":2,"texto_principal":"string","texto_apoio":"string","elemento_interativo":"none"},{"numero":3,"texto_principal":"string","texto_apoio":"string","elemento_interativo":"none"},{"numero":4,"texto_principal":"string","texto_apoio":"string","elemento_interativo":"caixa de perguntas"},{"numero":5,"texto_principal":"string","texto_apoio":"string","elemento_interativo":"link para perfil"}],"cta_final":"string","melhor_horario":"string"}`)
+    const [feedData, storyData] = await Promise.all([
+      callBackend("gemini", { prompt: `Crie um briefing de vídeo para FEED do Instagram do Márcio Souza. Audiência: empresários e empreendedores de diversas áreas (varejo supermercadista nordestino, indústria, serviços). Tema: conflito EUA-Israel contra o Irã e impactos econômicos globais. Objetivo: marketing INDIRETO — posicionar Márcio como autoridade em geopolítica e negócios. CTA deve convidar o empresário a comentar sua opinião no post, nunca direcionar para compra ou contato. NÃO mencionar Implasverde. Responda em português brasileiro. Retorne APENAS JSON sem markdown: {"titulo":"string","duracao":"string","gancho":"string","roteiro":["string","string","string","string"],"tom":"string","trilha":"string","legenda":"string","hashtags":["string","string","string","string","string"],"melhor_horario":"string"}` }),
+      callBackend("gemini", { prompt: `Crie um briefing de vídeo para STORIES do Instagram do Márcio Souza. Audiência: empresários e empreendedores de diversas áreas. Tema: conflito EUA-Israel contra o Irã e impactos econômicos globais. Objetivo: marketing INDIRETO — gerar engajamento nos comentários com perguntas que estimulem empresários a debater impactos no seu setor. Elementos interativos devem provocar reflexão empresarial. CTA final deve convidar ao debate nos comentários. NÃO mencionar Implasverde. Responda em português brasileiro. Retorne APENAS JSON sem markdown: {"titulo":"string","telas":[{"numero":1,"texto_principal":"string","texto_apoio":"string","elemento_interativo":"enquete Sim Nao"},{"numero":2,"texto_principal":"string","texto_apoio":"string","elemento_interativo":"none"},{"numero":3,"texto_principal":"string","texto_apoio":"string","elemento_interativo":"none"},{"numero":4,"texto_principal":"string","texto_apoio":"string","elemento_interativo":"caixa de perguntas"},{"numero":5,"texto_principal":"string","texto_apoio":"string","elemento_interativo":"link para perfil"}],"cta_final":"string","melhor_horario":"string"}` })
     ]);
 
-    const feed = parseJSON(feedText);
-    const story = parseJSON(storyText);
+    const feed = parseJSON(feedData.text);
+    const story = parseJSON(storyData.text);
 
     document.getElementById("insights-content").innerHTML = `
       <div class="video-section">
