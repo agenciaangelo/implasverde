@@ -4,7 +4,7 @@ async function callBackend(action, extra = {}) {
   const res = await fetch(BACKEND_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain" },
-    body: JSON.stringify({ action, ...extra })
+    body: JSON.stringify({ action, ...extra, _ts: Date.now() })
   });
   return await res.json();
 }
@@ -179,3 +179,9 @@ function refreshAll() {
 
 fetchMercado();
 fetchNoticias();
+
+// Atualização automática a cada 30 minutos
+setInterval(() => {
+  fetchMercado();
+  fetchNoticias();
+}, 30 * 60 * 1000);
