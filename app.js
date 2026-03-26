@@ -69,9 +69,6 @@ async function fetchNoticias() {
     const noticias = data.noticias || [];
     if (!noticias.length) throw new Error("Sem notícias");
 
-    const impactColor = { Alto: "#ef4444", Médio: "#f97316", Baixo: "#22c55e" };
-    const catColor = { Militar: "#ef4444", Diplomacia: "#60a5fa", Economia: "#22c55e", Energia: "#f97316" };
-
     document.getElementById("noticias-content").innerHTML = noticias.map(n => `
       <div class="news-card">
         <div class="news-bar" style="background:#f97316"></div>
@@ -81,7 +78,7 @@ async function fetchNoticias() {
             <span style="font-size:10px;color:#333;letter-spacing:1px">${n.data}</span>
           </div>
           <p class="news-title">
-            <a href="${n.url}" target="_blank" style="color:#e5e5e5;text-decoration:none;hover:text-decoration:underline">${n.titulo}</a>
+            <a href="${n.url}" target="_blank" style="color:#e5e5e5;text-decoration:none">${n.titulo}</a>
           </p>
           <p class="news-resumo">${n.resumo}</p>
         </div>
