@@ -65,23 +65,24 @@ async function fetchMercado() {
 async function fetchNoticias() {
   document.getElementById("noticias-content").innerHTML = spinner();
   try {
-    const text = await callClaude(`Você é um jornalista brasileiro especializado em geopolítica. Liste 6 notícias recentes e relevantes em PORTUGUÊS BRASILEIRO sobre o conflito entre EUA e Israel contra o Irã e seus aliados (Hezbollah, Houthis, milícias iranianas) no Oriente Médio. Foque nos impactos geopolíticos, econômicos e energéticos. Simule o estilo dos principais veículos brasileiros (Folha, Globo, Valor Econômico). Retorne APENAS um JSON array sem markdown:
-[{"titulo":"string","resumo":"string com 2 frases sobre o fato e impacto","fonte":"nome do veículo brasileiro simulado","data":"data aproximada","impacto_nivel":"Alto","categoria":"Militar"}]
-impacto_nivel: Alto/Médio/Baixo. categoria: Militar/Diplomacia/Economia/Energia.`);
-    const data = { text };
-    const noticias = parseJSON(data.text);
+    const data = await callBackend("noticias");
+    const noticias = data.noticias || [];
+    if (!noticias.length) throw new Error("Sem notícias");
+
     const impactColor = { Alto: "#ef4444", Médio: "#f97316", Baixo: "#22c55e" };
     const catColor = { Militar: "#ef4444", Diplomacia: "#60a5fa", Economia: "#22c55e", Energia: "#f97316" };
+
     document.getElementById("noticias-content").innerHTML = noticias.map(n => `
       <div class="news-card">
-        <div class="news-bar" style="background:${impactColor[n.impacto_nivel] || '#f97316'}"></div>
+        <div class="news-bar" style="background:#f97316"></div>
         <div>
           <div class="news-tags">
-            <span class="tag" style="color:${impactColor[n.impacto_nivel] || '#f97316'};border-bottom:1px solid ${impactColor[n.impacto_nivel] || '#f97316'}">${n.impacto_nivel}</span>
-            <span class="tag" style="color:${catColor[n.categoria] || '#888'};border-bottom:1px solid ${catColor[n.categoria] || '#888'}">${n.categoria}</span>
-            <span style="font-size:10px;color:#333;letter-spacing:1px">${n.fonte} · ${n.data}</span>
+            <span style="font-size:10px;color:#f97316;letter-spacing:1px;font-weight:700">${n.fonte}</span>
+            <span style="font-size:10px;color:#333;letter-spacing:1px">${n.data}</span>
           </div>
-          <p class="news-title">${n.titulo}</p>
+          <p class="news-title">
+            <a href="${n.url}" target="_blank" style="color:#e5e5e5;text-decoration:none;hover:text-decoration:underline">${n.titulo}</a>
+          </p>
           <p class="news-resumo">${n.resumo}</p>
         </div>
       </div>`).join("");
