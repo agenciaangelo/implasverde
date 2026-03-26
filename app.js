@@ -69,11 +69,15 @@ async function fetchNoticias() {
     const noticias = data.noticias || [];
     if (!noticias.length) throw new Error("Sem notícias");
 
-    document.getElementById("noticias-content").innerHTML = noticias.map(n => `
+    document.getElementById("noticias-content").innerHTML = noticias.map(n => {
+      const isNacional = n.tipo === "nacional";
+      const barColor = isNacional ? "#f59e0b" : "#f97316";
+      return `
       <div class="news-card">
-        <div class="news-bar" style="background:#f97316"></div>
+        <div class="news-bar" style="background:${barColor}"></div>
         <div>
           <div class="news-tags">
+            ${isNacional ? `<span class="news-badge-nacional">🇧🇷 CENÁRIO NACIONAL</span>` : `<span style="font-size:10px;color:#f97316;letter-spacing:1px;font-weight:700">🌍 ORIENTE MÉDIO</span>`}
             <span style="font-size:10px;color:#f97316;letter-spacing:1px;font-weight:700">${n.fonte}</span>
             <span style="font-size:10px;color:#333;letter-spacing:1px">${n.data}</span>
           </div>
@@ -82,7 +86,8 @@ async function fetchNoticias() {
           </p>
           <p class="news-resumo">${n.resumo}</p>
         </div>
-      </div>`).join("");
+      </div>`;
+    }).join("");
   } catch (e) {
     document.getElementById("noticias-content").innerHTML = `<p class="error-text">Erro ao carregar notícias. Tente novamente.</p>`;
     console.error(e);
